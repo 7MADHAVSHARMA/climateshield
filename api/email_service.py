@@ -13,14 +13,31 @@ def send_climate_alert_email(
     weather_snapshot
 ):
     api_key = os.environ.get("BREVO_API_KEY")
+    sender_email = os.environ.get("BREVO_SENDER_EMAIL")
 
-    if not api_key:
-        return False, "BREVO_API_KEY is not configured."
+    if not api_key or not sender_email:
+        print("Brevo email configuration is missing.")
+        return False
 
-    temperature = weather_snapshot.get("temperature_2m", "Not available")
-    rainfall = weather_snapshot.get("rain", "Not available")
-    wind_speed = weather_snapshot.get("wind_speed_10m", "Not available")
-    humidity = weather_snapshot.get("relative_humidity_2m", "Not available")
+    temperature = weather_snapshot.get(
+        "temperature_2m",
+        "Not available"
+    )
+
+    rainfall = weather_snapshot.get(
+        "rain",
+        "Not available"
+    )
+
+    wind_speed = weather_snapshot.get(
+        "wind_speed_10m",
+        "Not available"
+    )
+
+    humidity = weather_snapshot.get(
+        "relative_humidity_2m",
+        "Not available"
+    )
 
     subject = (
         f"ClimateShield Alert: {risk_level} {risk_type} "
@@ -30,7 +47,9 @@ def send_climate_alert_email(
     html_content = f"""
     <html>
         <body style="font-family: Arial, sans-serif; color: #172033;">
-            <h2 style="color: #0f766e;">ClimateShield Climate Alert</h2>
+            <h2 style="color: #0f766e;">
+                ClimateShield Climate Alert
+            </h2>
 
             <p>Hello {receiver_name},</p>
 
@@ -42,6 +61,7 @@ def send_climate_alert_email(
             </p>
 
             <h3>Current Conditions</h3>
+
             <ul>
                 <li>Temperature: {temperature} °C</li>
                 <li>Rainfall: {rainfall} mm</li>
@@ -69,7 +89,7 @@ def send_climate_alert_email(
     payload = {
         "sender": {
             "name": "ClimateShield",
-            "email": os.environ.get("BREVO_SENDER_EMAIL")
+            "email": sender_email
         },
         "to": [
             {
@@ -96,10 +116,11 @@ def send_climate_alert_email(
         )
 
         response.raise_for_status()
-        return True, "Email sent successfully."
+        return True
 
     except requests.RequestException as error:
-        return False, str(error)
+        print("Brevo email error:", error)
+        return False
 
 
 def get_safety_message(risk_type):
