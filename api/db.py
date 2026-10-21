@@ -2,7 +2,13 @@ import os
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "climateshield.db")
+# Vercel serverless functions have a read-only application filesystem.  Use /tmp
+# there so importing the app and creating tables does not crash the deployment.
+# Note: /tmp is ephemeral; use a managed database for durable user accounts.
+if os.environ.get("VERCEL"):
+    DB_PATH = os.path.join("/tmp", "climateshield.db")
+else:
+    DB_PATH = os.path.join(os.path.dirname(__file__), "climateshield.db")
 
 
 def get_db():
