@@ -43,4 +43,139 @@ body {
     #map {
         height: 280px;
     }
+}body {
+    min-height: 100vh;
+}
+
+#map {
+    width: 100%;
+    height: 360px;
+    border-radius: 8px;
+}
+
+.risk {
+    padding: 14px;
+    margin: 10px 0;
+    border-left: 5px solid #ffc107;
+    background-color: #fff8e1;
+    border-radius: 5px;
+}
+
+.risk.High {
+    border-left-color: #dc3545;
+    background-color: #f8d7da;
+}
+
+.risk.Severe {
+    border-left-color: #721c24;
+    background-color: #f1b0b7;
+}
+
+.risk.Moderate {
+    border-left-color: #ffc107;
+    background-color: #fff3cd;
+}
+
+#metrics p {
+    margin-bottom: 8px;
+}
+
+#guidance li {
+    padding: 10px 0;
+}
+
+@media (max-width: 576px) {
+    #map {
+        height: 280px;
+    }
+}body {
+    min-height: 100vh;
+}
+
+#map {
+    width: 100%;
+    height: 360px;
+    border-radius: 8px;
+}
+
+.risk {
+    padding: 14px;
+    margin: 10px 0;
+    border-left: 5px solid #ffc107;
+    background-color: #fff8e1;
+    border-radius: 5px;
+}
+
+.risk.High {
+    border-left-color: #dc3545;
+    background-color: #f8d7da;
+}
+
+.risk.Severe {
+    border-left-color: #721c24;
+    background-color: #f1b0b7;
+}
+
+.risk.Moderate {
+    border-left-color: #ffc107;
+    background-color: #fff3cd;
+}
+
+#metrics p {
+    margin-bottom: 8px;
+}
+
+#guidance li {
+    padding: 10px 0;
+}
+
+@media (max-width: 576px) {
+    #map {
+        height: 280px;
+    }
+}body {
+    min-height: 100vh;
+}
+
+#map {
+    width: 100%;
+    height: 360px;
+    border-radius: 8px;
+}
+
+.risk {
+    padding: 14px;
+    margin: 10px 0;
+    border-left: 5px solid #ffc107;
+    background-color: #fff8e1;
+    border-radius: 5px;
+}
+
+.risk.High {
+    border-left-color: #dc3545;
+    background-color: #f8d7da;
+}
+
+.risk.Severe {
+    border-left-color: #721c24;
+    background-color: #f1b0b7;
+}
+
+.risk.Moderate {
+    border-left-color: #ffc107;
+    background-color: #fff3cd;
+}
+
+#metrics p {
+    margin-bottom: 8px;
+}
+
+#guidance li {
+    padding: 10px 0;
+}
+
+@media (max-width: 576px) {
+    #map {
+        height: 280px;
+    }
 }
