@@ -27,10 +27,13 @@ from db import (
 
 from email_service import send_climate_alert_email
 
+# Resolve assets from the repository root rather than relying on the runtime's
+# current working directory (which can differ on Vercel).
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 app = Flask(
     __name__,
-    template_folder="../templates",
-    static_folder="../static"
+    template_folder=os.path.join(PROJECT_ROOT, "templates"),
+    static_folder=os.path.join(PROJECT_ROOT, "static")
 )
 
 app.secret_key = os.environ.get(
