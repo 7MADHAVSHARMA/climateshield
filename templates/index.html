@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>ClimateShield | Climate Risk Awareness Platform</title>
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    >
+
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+
+<nav class="navbar navbar-dark bg-primary">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="/">
+            ClimateShield
+        </a>
+
+        <div>
+            <a class="btn btn-light btn-sm" href="/register">
+                Register
+            </a>
+
+            <a class="btn btn-outline-light btn-sm" href="/login">
+                Login
+            </a>
+        </div>
+    </div>
+</nav>
+
+<header class="bg-success text-white text-center py-5">
+    <div class="container">
+        <h1 class="display-5 fw-bold">
+            Climate Risk Awareness and Early Response Platform
+        </h1>
+
+        <p class="lead mb-0">
+            Supporting United Nations Sustainable Development Goal 13
+        </p>
+    </div>
+</header>
+
+<main class="container my-5">
+
+    <section class="card shadow-sm p-4">
+        <h2 class="h4 mb-3">
+            Check Climate Risk
+        </h2>
+
+        <div class="row g-2">
+            <div class="col-md-7">
+                <input
+                    type="text"
+                    id="place"
+                    class="form-control"
+                    value="Kathmandu, Nepal"
+                    placeholder="Enter city or address"
+                >
+            </div>
+
+            <div class="col-md-3 d-grid">
+                <button
+                    class="btn btn-success"
+                    onclick="searchPlace()"
+                >
+                    Check Climate Risk
+                </button>
+            </div>
+
+            <div class="col-md-2 d-grid">
+                <button
+                    class="btn btn-secondary"
+                    onclick="useGPS()"
+                >
+                    Use GPS
+                </button>
+            </div>
+        </div>
+
+        <p id="status" class="text-muted mt-3 mb-0">
+            Enter a location to view climate risk information.
+        </p>
+    </section>
+
+    <section id="result" class="d-none mt-4">
+
+        <div class="row g-4">
+
+            <div class="col-lg-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h2 id="location" class="h4"></h2>
+
+                        <p id="time" class="text-muted"></p>
+
+                        <div
+                            id="level"
+                            class="badge rounded-pill fs-6 p-2 mb-3"
+                        >
+                            LOW
+                        </div>
+
+                        <div id="metrics"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h2 class="h4">
+                            Safety Guidance
+                        </h2>
+
+                        <ul
+                            id="guidance"
+                            class="list-group list-group-flush"
+                        ></ul>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="card shadow-sm my-4">
+            <div class="card-body">
+                <h2 class="h4">
+                    Detected Climate Risks
+                </h2>
+
+                <div id="risks"></div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="h4">
+                    Location Map
+                </h2>
+
+                <div id="map"></div>
+            </div>
+        </div>
+
+    </section>
+
+</main>
+
+<footer class="bg-light text-center text-muted py-4 mt-5">
+    <div class="container">
+        Educational prototype. Follow official local emergency advisories.
+    </div>
+</footer>
+
+<script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+></script>
+
+<script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+></script>
+
+<script src="/static/app.js"></script>
+
+</body>
+</html>
