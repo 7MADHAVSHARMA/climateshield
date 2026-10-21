@@ -12,8 +12,8 @@ def send_climate_alert_email(
     risk_level,
     weather_snapshot
 ):
-    api_key = os.environ.get("BREVO_API_KEY")
-    sender_email = os.environ.get("BREVO_SENDER_EMAIL")
+    api_key = os.environ.get("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")
+    sender_email = os.environ.get("4madhavs1@gmail.com")
 
     if not api_key or not sender_email:
         print("Brevo email configuration is missing.")
