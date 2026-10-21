@@ -22,7 +22,7 @@ async function searchPlace() {
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.error);
+            throw new Error(data.error || "Location search failed.");
         }
 
         await loadRisk(
@@ -45,15 +45,15 @@ function useGPS() {
     setStatus("Requesting your location...");
 
     navigator.geolocation.getCurrentPosition(
-        position => {
+        function (position) {
             loadRisk(
                 position.coords.latitude,
                 position.coords.longitude,
                 "Your Current Location"
             );
         },
-        () => {
-            setStatus("Location permission was denied.");
+        function (error) {
+            setStatus("Location permission was denied or unavailable.");
         }
     );
 }
@@ -69,7 +69,7 @@ async function loadRisk(latitude, longitude, name) {
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.error);
+            throw new Error(data.error || "Weather data failed.");
         }
 
         renderResult(data, name, latitude, longitude);
@@ -84,73 +84,100 @@ async function loadRisk(latitude, longitude, name) {
 }
 
 function renderResult(data, name, latitude, longitude) {
-    document
-        .getElementById("result")
-        .classList
-        .remove("d-none");
+    const resultSection = document.getElementById("result");
 
-    document.getElementById("location").textContent = name;
+    if (resultSection) {
+        resultSection.classList.remove("d-none");
+    }
 
-    document.getElementById("time").textContent =
-        `Updated: ${data.current.time || "Now"} · ${data.timezone}`;
+    const locationElement = document.getElementById("location");
 
-    const level = document.getElementById("level");
+    if (locationElement) {
+        locationElement.textContent = name;
+    }
 
-    level.textContent = data.level.toUpperCase();
-    level.className = `badge rounded-pill fs-6 p-2 mb-3 bg-${getBootstrapColor(data.level)}`;
+    const timeElement = document.getElementById("time");
 
-    const current = data.current;
+    if (timeElement) {
+        timeElement.textContent =
+            `Updated: ${data.current.time || "Now"} · ${data.timezone}`;
+    }
 
-    document.getElementById("metrics").innerHTML = `
-        <p>
-            <strong>Temperature:</strong>
-            ${current.temperature_2m ?? "—"} °C
-        </p>
+    const levelElement = document.getElementById("level");
 
-        <p>
-            <strong>Rainfall:</strong>
-            ${current.rain ?? "—"} mm
-        </p>
+    if (levelElement) {
+        levelElement.textContent = data.level.toUpperCase();
+        levelElement.className =
+            `badge rounded-pill fs-6 p-2 mb-3 bg-${getBootstrapColor(data.level)}`;
+    }
 
-        <p>
-            <strong>Wind Speed:</strong>
-            ${current.wind_speed_10m ?? "—"} km/h
-        </p>
+    const metricsElement = document.getElementById("metrics");
 
-        <p>
-            <strong>Humidity:</strong>
-            ${current.relative_humidity_2m ?? "—"}%
-        </p>
-    `;
+    if (metricsElement) {
+        const current = data.current;
 
-    document.getElementById("guidance").innerHTML =
-        data.guidance
+        metricsElement.innerHTML = `
+            <p>
+                <strong>Temperature:</strong>
+                ${current.temperature_2m ?? "—"} °C
+            </p>
+
+            <p>
+                <strong>Rainfall:</strong>
+                ${current.rain ?? "—"} mm
+            </p>
+
+            <p>
+                <strong>Wind Speed:</strong>
+                ${current.wind_speed_10m ?? "—"} km/h
+            </p>
+
+            <p>
+                <strong>Humidity:</strong>
+                ${current.relative_humidity_2m ?? "—"}%
+            </p>
+        `;
+    }
+
+    const guidanceElement = document.getElementById("guidance");
+
+    if (guidanceElement) {
+        guidanceElement.innerHTML = data.guidance
             .map(item => `<li class="list-group-item">${item}</li>`)
             .join("");
+    }
 
-    const risks = document.getElementById("risks");
+    const risksElement = document.getElementById("risks");
 
-    if (data.risks.length === 0) {
-        risks.innerHTML =
-            "<p>No project-defined climate risk threshold was reached.</p>";
-    } else {
-        risks.innerHTML = data.risks
-            .map(risk => `
-                <div class="risk ${risk.level}">
-                    <strong>
-                        ${risk.type} — ${risk.level}
-                    </strong>
-                    <br>
-                    ${risk.detail}
-                </div>
-            `)
-            .join("");
+    if (risksElement) {
+        if (data.risks.length === 0) {
+            risksElement.innerHTML =
+                "<p>No project-defined climate risk threshold was reached.</p>";
+        } else {
+            risksElement.innerHTML = data.risks
+                .map(risk => `
+                    <div class="risk ${risk.level}">
+                        <strong>
+                            ${risk.type} — ${risk.level}
+                        </strong>
+                        <br>
+                        ${risk.detail}
+                    </div>
+                `)
+                .join("");
+        }
     }
 
     updateMap(latitude, longitude, name);
 }
 
 function updateMap(latitude, longitude, name) {
+    const mapElement = document.getElementById("map");
+
+    if (!mapElement) {
+        return;
+    }
+
     if (!map) {
         map = L.map("map").setView(
             [latitude, longitude],
@@ -197,7 +224,25 @@ function getBootstrapColor(level) {
 }
 
 function setStatus(message) {
-    document.getElementById("status").textContent = message;
+    const statusElement = document.getElementById("status");
+
+    if (statusElement) {
+        statusElement.textContent = message;
+    }
 }
 
-searchPlace();
+document.addEventListener("DOMContentLoaded", function () {
+    const searchButton = document.querySelector("button[onclick='searchPlace()']");
+
+    if (searchButton) {
+        searchButton.addEventListener("click", searchPlace);
+    }
+
+    const gpsButton = document.querySelector("button[onclick='useGPS()']");
+
+    if (gpsButton) {
+        gpsButton.addEventListener("click", useGPS);
+    }
+
+    searchPlace();
+});
