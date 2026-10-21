@@ -13,7 +13,7 @@ from flask import (
 
 import requests
 
-from db import (
+from api.db import (
     init_db,
     create_user,
     verify_user,
@@ -22,18 +22,16 @@ from db import (
     was_alert_sent_recently,
     log_alert,
     enable_email_alerts,
-    disable_email_alerts
+    disable_email_alerts,
+    get_user_by_email
 )
 
-from email_service import send_climate_alert_email
+from api.email_service import send_climate_alert_email
 
-# Resolve assets from the repository root rather than relying on the runtime's
-# current working directory (which can differ on Vercel).
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 app = Flask(
     __name__,
-    template_folder=os.path.join(PROJECT_ROOT, "templates"),
-    static_folder=os.path.join(PROJECT_ROOT, "static")
+    template_folder="../templates",
+    static_folder="../static"
 )
 
 app.secret_key = os.environ.get(
@@ -51,7 +49,10 @@ RISK_PRIORITY = {
     "Severe": 4
 }
 
-init_db()
+try:
+    init_db()
+except Exception as error:
+    print("Database initialization skipped:", error)
 
 
 @app.route("/")
@@ -183,8 +184,10 @@ def save_user_location():
     if not location_name or latitude is None or longitude is None:
         return jsonify({"error": "Invalid location data."}), 400
 
-    from db import get_user_by_email
     user = get_user_by_email(email)
+
+    if not user:
+        return jsonify({"error": "User not found."}), 404
 
     save_location(
         user["id"],
@@ -228,7 +231,8 @@ def find_location():
         response.raise_for_status()
         results = response.json()
 
-    except requests.RequestException:
+    except requests.RequestException as error:
+        print("Nominatim error:", error)
         return jsonify({"error": "Location service is unavailable."}), 502
 
     if not results:
@@ -278,7 +282,8 @@ def get_risk():
         response.raise_for_status()
         weather_data = response.json()
 
-    except requests.RequestException:
+    except requests.RequestException as error:
+        print("Open-Meteo error:", error)
         return jsonify({"error": "Weather service is unavailable."}), 502
 
     risk_result = classify_risk(weather_data)
@@ -334,7 +339,7 @@ def check_alerts():
             if already_sent:
                 continue
 
-            success, message = send_climate_alert_email(
+            success = send_climate_alert_email(
                 location["user_email"],
                 location["user_name"],
                 location["location_name"],
@@ -381,7 +386,8 @@ def get_weather_data(latitude, longitude):
         response.raise_for_status()
         return response.json()
 
-    except requests.RequestException:
+    except requests.RequestException as error:
+        print("Weather data error:", error)
         return None
 
 
@@ -500,6 +506,7 @@ def generate_guidance(risks):
 
 @app.errorhandler(Exception)
 def handle_error(error):
+    print("Unhandled application error:", error)
     return jsonify({
         "error": "Unable to process request. Please try again later."
     }), 502
