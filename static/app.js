@@ -1,11 +1,38 @@
 let map;
 let marker;
 
+document.addEventListener("DOMContentLoaded", function () {
+    const searchButton = document.getElementById("searchButton");
+    const gpsButton = document.getElementById("gpsButton");
+
+    if (searchButton) {
+        searchButton.addEventListener("click", searchPlace);
+    }
+
+    if (gpsButton) {
+        gpsButton.addEventListener("click", useGPS);
+    }
+
+    const placeInput = document.getElementById("place");
+
+    if (placeInput) {
+        placeInput.addEventListener("keypress", function (event) {
+            if (event.key === "Enter") {
+                searchPlace();
+            }
+        });
+    }
+});
+
 async function searchPlace() {
-    const query = document
-        .getElementById("place")
-        .value
-        .trim();
+    const placeInput = document.getElementById("place");
+
+    if (!placeInput) {
+        setStatus("Search box not found.");
+        return;
+    }
+
+    const query = placeInput.value.trim();
 
     if (!query) {
         setStatus("Please enter a location.");
@@ -22,7 +49,9 @@ async function searchPlace() {
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.error || "Location search failed.");
+            throw new Error(
+                data.error || "Location search failed."
+            );
         }
 
         await loadRisk(
@@ -38,7 +67,10 @@ async function searchPlace() {
 
 function useGPS() {
     if (!navigator.geolocation) {
-        setStatus("Geolocation is not supported by this browser.");
+        setStatus(
+            "Geolocation is not supported by this browser."
+        );
+
         return;
     }
 
@@ -46,14 +78,38 @@ function useGPS() {
 
     navigator.geolocation.getCurrentPosition(
         function (position) {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+
             loadRisk(
-                position.coords.latitude,
-                position.coords.longitude,
+                latitude,
+                longitude,
                 "Your Current Location"
             );
         },
         function (error) {
-            setStatus("Location permission was denied or unavailable.");
+            if (error.code === error.PERMISSION_DENIED) {
+                setStatus(
+                    "Location permission was denied. Please allow location access."
+                );
+            } else if (error.code === error.POSITION_UNAVAILABLE) {
+                setStatus(
+                    "Your location is currently unavailable."
+                );
+            } else if (error.code === error.TIMEOUT) {
+                setStatus(
+                    "Location request timed out. Please try again."
+                );
+            } else {
+                setStatus(
+                    "Unable to get your location."
+                );
+            }
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
         }
     );
 }
@@ -69,7 +125,9 @@ async function loadRisk(latitude, longitude, name) {
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.error || "Weather data failed.");
+            throw new Error(
+                data.error || "Weather data request failed."
+            );
         }
 
         renderResult(data, name, latitude, longitude);
@@ -143,7 +201,9 @@ function renderResult(data, name, latitude, longitude) {
 
     if (guidanceElement) {
         guidanceElement.innerHTML = data.guidance
-            .map(item => `<li class="list-group-item">${item}</li>`)
+            .map(function (item) {
+                return `<li class="list-group-item">${item}</li>`;
+            })
             .join("");
     }
 
@@ -155,15 +215,17 @@ function renderResult(data, name, latitude, longitude) {
                 "<p>No project-defined climate risk threshold was reached.</p>";
         } else {
             risksElement.innerHTML = data.risks
-                .map(risk => `
-                    <div class="risk ${risk.level}">
-                        <strong>
-                            ${risk.type} — ${risk.level}
-                        </strong>
-                        <br>
-                        ${risk.detail}
-                    </div>
-                `)
+                .map(function (risk) {
+                    return `
+                        <div class="risk ${risk.level}">
+                            <strong>
+                                ${risk.type} — ${risk.level}
+                            </strong>
+                            <br>
+                            ${risk.detail}
+                        </div>
+                    `;
+                })
                 .join("");
         }
     }
@@ -230,19 +292,3 @@ function setStatus(message) {
         statusElement.textContent = message;
     }
 }
-
-document.addEventListener("DOMContentLoaded", function () {
-    const searchButton = document.querySelector("button[onclick='searchPlace()']");
-
-    if (searchButton) {
-        searchButton.addEventListener("click", searchPlace);
-    }
-
-    const gpsButton = document.querySelector("button[onclick='useGPS()']");
-
-    if (gpsButton) {
-        gpsButton.addEventListener("click", useGPS);
-    }
-
-    searchPlace();
-});
