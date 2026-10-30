@@ -154,6 +154,7 @@ async function searchPlace() {
         return;
     }
 
+    showLoading();
     setStatus("Finding location...");
 
     try {
@@ -176,6 +177,7 @@ async function searchPlace() {
         );
 
     } catch (error) {
+        hideLoading();
         setStatus(error.message);
     }
 }
@@ -189,6 +191,7 @@ function useGPS() {
         return;
     }
 
+    showLoading();
     setStatus("Requesting your location...");
 
     navigator.geolocation.getCurrentPosition(
@@ -203,6 +206,8 @@ function useGPS() {
             );
         },
         function (error) {
+            hideLoading();
+
             if (error.code === error.PERMISSION_DENIED) {
                 setStatus(
                     "Location permission was denied. Please allow location access."
@@ -247,11 +252,14 @@ async function loadRisk(latitude, longitude, name) {
 
         renderResult(data, name, latitude, longitude);
 
+        hideLoading();
+
         setStatus(
             "Data loaded. This is an awareness prototype, not an official warning service."
         );
 
     } catch (error) {
+        hideLoading();
         setStatus(error.message);
     }
 }
@@ -261,6 +269,9 @@ function renderResult(data, name, latitude, longitude) {
 
     if (resultSection) {
         resultSection.classList.remove("d-none");
+        resultSection.classList.remove("result-section");
+        void resultSection.offsetWidth;
+        resultSection.classList.add("result-section");
     }
 
     const locationElement = document.getElementById("location");
@@ -281,7 +292,14 @@ function renderResult(data, name, latitude, longitude) {
     if (levelElement) {
         levelElement.textContent = data.level.toUpperCase();
         levelElement.className =
-            `badge rounded-pill fs-6 p-2 mb-3 bg-${getBootstrapColor(data.level)}`;
+            `risk-badge ${data.level.toUpperCase()}`;
+    }
+
+    const weatherIcon = document.getElementById("weatherIcon");
+
+    if (weatherIcon) {
+        weatherIcon.className = `weather-icon ${getWeatherAnimationClass(data.current.weather_code)}`;
+        weatherIcon.textContent = getWeatherEmoji(data.current.weather_code);
     }
 
     const metricsElement = document.getElementById("metrics");
@@ -332,7 +350,7 @@ function renderResult(data, name, latitude, longitude) {
             risksElement.innerHTML = data.risks
                 .map(function (risk) {
                     return `
-                        <div class="risk ${risk.level}">
+                        <div class="risk-item ${risk.level}">
                             <strong>
                                 ${risk.type} — ${risk.level}
                             </strong>
@@ -384,6 +402,71 @@ function updateMap(latitude, longitude, name) {
         .openPopup();
 }
 
+function getWeatherEmoji(weatherCode) {
+    const code = Number(weatherCode);
+
+    if (code === 0) {
+        return "☀️";
+    }
+
+    if (code === 1 || code === 2) {
+        return "🌤️";
+    }
+
+    if (code === 3) {
+        return "☁️";
+    }
+
+    if (code === 45 || code === 48) {
+        return "🌫️";
+    }
+
+    if (
+        code >= 51 && code <= 67 ||
+        code >= 80 && code <= 82
+    ) {
+        return "🌧️";
+    }
+
+    if (
+        code >= 71 && code <= 77 ||
+        code === 85 || code === 86
+    ) {
+        return "❄️";
+    }
+
+    if (
+        code >= 95 && code <= 99
+    ) {
+        return "⛈️";
+    }
+
+    return "🌍";
+}
+
+function getWeatherAnimationClass(weatherCode) {
+    const code = Number(weatherCode);
+
+    if (
+        code >= 51 && code <= 67 ||
+        code >= 80 && code <= 82
+    ) {
+        return "rain";
+    }
+
+    if (
+        code >= 95 && code <= 99
+    ) {
+        return "thunderstorm";
+    }
+
+    if (code >= 35) {
+        return "wind";
+    }
+
+    return "";
+}
+
 function getBootstrapColor(level) {
     if (level === "Severe") {
         return "dark";
@@ -398,6 +481,22 @@ function getBootstrapColor(level) {
     }
 
     return "success";
+}
+
+function showLoading() {
+    const loadingArea = document.getElementById("loading");
+
+    if (loadingArea) {
+        loadingArea.classList.remove("d-none");
+    }
+}
+
+function hideLoading() {
+    const loadingArea = document.getElementById("loading");
+
+    if (loadingArea) {
+        loadingArea.classList.add("d-none");
+    }
 }
 
 function setStatus(message) {
