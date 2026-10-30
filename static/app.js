@@ -593,22 +593,4 @@ function getWeatherAnimationClass(weatherCode) {
 
     return "";
 }
-const passwordInput = document.getElementById("password");
-const togglePasswordButton = document.getElementById("togglePassword");
-const togglePasswordIcon = document.getElementById("togglePasswordIcon");
 
-if (passwordInput && togglePasswordButton) {
-    togglePasswordButton.addEventListener("click", function () {
-        const isHidden = passwordInput.type === "password";
-
-        if (isHidden) {
-            passwordInput.type = "text";
-            togglePasswordIcon.textContent = "👁️";
-            togglePasswordButton.setAttribute("aria-label", "Hide password");
-        } else {
-            passwordInput.type = "password";
-            togglePasswordIcon.textContent = "👁️";
-            togglePasswordButton.setAttribute("aria-label", "Show password");
-        }
-    });
-}
