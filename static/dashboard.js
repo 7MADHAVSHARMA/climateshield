@@ -78,7 +78,7 @@ async function enableAlerts() {
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.error);
+            throw new Error(data.error || "Unable to enable alerts.");
         }
 
         setStatus(data.message);
