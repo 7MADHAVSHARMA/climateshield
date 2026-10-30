@@ -1,9 +1,11 @@
 let map;
 let marker;
+let suggestionTimer = null;
 
 document.addEventListener("DOMContentLoaded", function () {
     const searchButton = document.getElementById("searchButton");
     const gpsButton = document.getElementById("gpsButton");
+    const placeInput = document.getElementById("place");
 
     if (searchButton) {
         searchButton.addEventListener("click", searchPlace);
@@ -13,16 +15,129 @@ document.addEventListener("DOMContentLoaded", function () {
         gpsButton.addEventListener("click", useGPS);
     }
 
-    const placeInput = document.getElementById("place");
-
     if (placeInput) {
+        placeInput.addEventListener("input", handleSuggestionInput);
+
         placeInput.addEventListener("keypress", function (event) {
             if (event.key === "Enter") {
+                event.preventDefault();
+                hideSuggestions();
                 searchPlace();
             }
         });
     }
+
+    document.addEventListener("click", function (event) {
+        const suggestionsBox = document.getElementById("suggestions");
+        const placeInput = document.getElementById("place");
+
+        if (
+            suggestionsBox &&
+            placeInput &&
+            !suggestionsBox.contains(event.target) &&
+            event.target !== placeInput
+        ) {
+            hideSuggestions();
+        }
+    });
 });
+
+function handleSuggestionInput() {
+    const query = document
+        .getElementById("place")
+        .value
+        .trim();
+
+    clearTimeout(suggestionTimer);
+
+    if (query.length < 3) {
+        hideSuggestions();
+        return;
+    }
+
+    suggestionTimer = setTimeout(function () {
+        getSuggestions(query);
+    }, 600);
+}
+
+async function getSuggestions(query) {
+    try {
+        const response = await fetch(
+            `/api/suggestions?q=${encodeURIComponent(query)}`
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            hideSuggestions();
+            return;
+        }
+
+        showSuggestions(data.suggestions || []);
+
+    } catch (error) {
+        hideSuggestions();
+    }
+}
+
+function showSuggestions(suggestions) {
+    const suggestionsBox = document.getElementById("suggestions");
+
+    if (!suggestionsBox) {
+        return;
+    }
+
+    if (suggestions.length === 0) {
+        suggestionsBox.innerHTML =
+            `<button type="button" class="list-group-item list-group-item-action text-muted" disabled>
+                No location suggestions found
+            </button>`;
+
+        suggestionsBox.style.display = "block";
+        return;
+    }
+
+    suggestionsBox.innerHTML = suggestions
+        .map(function (item) {
+            return `
+                <button
+                    type="button"
+                    class="list-group-item list-group-item-action"
+                    onclick="selectSuggestion(
+                        '${escapeJavaScript(item.name)}',
+                        ${item.latitude},
+                        ${item.longitude}
+                    )"
+                >
+                    ${escapeHTML(item.name)}
+                </button>
+            `;
+        })
+        .join("");
+
+    suggestionsBox.style.display = "block";
+}
+
+function selectSuggestion(name, latitude, longitude) {
+    const placeInput = document.getElementById("place");
+
+    if (placeInput) {
+        placeInput.value = name;
+    }
+
+    hideSuggestions();
+
+    loadRisk(latitude, longitude, name);
+}
+
+function hideSuggestions() {
+    const suggestionsBox = document.getElementById("suggestions");
+
+    if (suggestionsBox) {
+        suggestionsBox.style.display = "none";
+        suggestionsBox.innerHTML = "";
+    }
+}
 
 async function searchPlace() {
     const placeInput = document.getElementById("place");
@@ -291,4 +406,22 @@ function setStatus(message) {
     if (statusElement) {
         statusElement.textContent = message;
     }
+}
+
+function escapeHTML(text) {
+    return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function escapeJavaScript(text) {
+    return String(text)
+        .replace(/\\/g, "\\\\")
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, "\\n")
+        .replace(/\r/g, "\\r");
 }
