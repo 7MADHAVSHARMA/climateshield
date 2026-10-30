@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="data:,">
+
     <title>ClimateShield | Climate Risk Awareness Platform</title>
 
     <link
@@ -17,6 +17,8 @@
     >
 
     <link rel="stylesheet" href="/static/style.css">
+
+    <link rel="icon" href="data:,">
 </head>
 
 <body>
@@ -58,35 +60,43 @@
             Check Climate Risk
         </h2>
 
-        <div class="row g-2">
-            <div class="col-md-7">
-                <input
-                    type="text"
-                    id="place"
-                    class="form-control"
-                    value="Kathmandu, Nepal"
-                    placeholder="Enter city or address"
-                >
-            </div>
+        <div class="position-relative">
+            <div class="row g-2">
+                <div class="col-md-7">
+                    <input
+                        type="text"
+                        id="place"
+                        class="form-control"
+                        placeholder="Search location"
+                        autocomplete="off"
+                    >
 
-            <div class="col-md-3 d-grid">
-                <button
-                    type="button"
-                    id="searchButton"
-                    class="btn btn-success"
-                >
-                    Check Climate Risk
-                </button>
-            </div>
+                    <div
+                        id="suggestions"
+                        class="list-group position-absolute w-100 mt-1 shadow"
+                        style="z-index: 1050; display: none;"
+                    ></div>
+                </div>
 
-            <div class="col-md-2 d-grid">
-                <button
-                    type="button"
-                    id="gpsButton"
-                    class="btn btn-secondary"
-                >
-                    Use GPS
-                </button>
+                <div class="col-md-3 d-grid">
+                    <button
+                        type="button"
+                        id="searchButton"
+                        class="btn btn-success"
+                    >
+                        Check Climate Risk
+                    </button>
+                </div>
+
+                <div class="col-md-2 d-grid">
+                    <button
+                        type="button"
+                        id="gpsButton"
+                        class="btn btn-secondary"
+                    >
+                        Use GPS
+                    </button>
+                </div>
             </div>
         </div>
 
