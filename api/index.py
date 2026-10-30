@@ -245,7 +245,59 @@ def find_location():
         "latitude": float(location["lat"]),
         "longitude": float(location["lon"])
     })
+@app.route("/api/suggestions")
+def get_location_suggestions():
+    query = request.args.get("q", "").strip()
 
+    if len(query) < 3:
+        return jsonify({
+            "suggestions": []
+        })
+
+    headers = {
+        "User-Agent": os.environ.get(
+            "NOMINATIM_USER_AGENT",
+            "ClimateShieldStudentProject/1.0 "
+            "(replace-with-your-email@example.com)"
+        )
+    }
+
+    params = {
+        "q": query,
+        "format": "jsonv2",
+        "limit": 5,
+        "addressdetails": 1
+    }
+
+    try:
+        response = requests.get(
+            NOMINATIM_URL,
+            params=params,
+            headers=headers,
+            timeout=10
+        )
+
+        response.raise_for_status()
+        results = response.json()
+
+    except requests.RequestException as error:
+        print("Nominatim suggestions error:", error)
+        return jsonify({
+            "suggestions": []
+        })
+
+    suggestions = []
+
+    for location in results:
+        suggestions.append({
+            "name": location.get("display_name", ""),
+            "latitude": float(location.get("lat", 0)),
+            "longitude": float(location.get("lon", 0))
+        })
+
+    return jsonify({
+        "suggestions": suggestions
+    })
 
 @app.route("/api/risk")
 def get_risk():
