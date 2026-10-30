@@ -524,3 +524,72 @@ function escapeJavaScript(text) {
         .replace(/\n/g, "\\n")
         .replace(/\r/g, "\\r");
 }
+function setStatus(message) {
+    const statusElement = document.getElementById("status");
+
+    if (statusElement) {
+        statusElement.textContent = message;
+    }
+}
+
+function getWeatherEmoji(weatherCode) {
+    const code = Number(weatherCode);
+
+    if (code === 0) {
+        return "☀️";
+    }
+
+    if (code === 1 || code === 2) {
+        return "🌤️";
+    }
+
+    if (code === 3) {
+        return "☁️";
+    }
+
+    if (code === 45 || code === 48) {
+        return "🌫️";
+    }
+
+    if (
+        (code >= 51 && code <= 67) ||
+        (code >= 80 && code <= 82)
+    ) {
+        return "🌧️";
+    }
+
+    if (
+        (code >= 71 && code <= 77) ||
+        code === 85 ||
+        code === 86
+    ) {
+        return "❄️";
+    }
+
+    if (code >= 95 && code <= 99) {
+        return "⛈️";
+    }
+
+    return "🌍";
+}
+
+function getWeatherAnimationClass(weatherCode) {
+    const code = Number(weatherCode);
+
+    if (
+        (code >= 51 && code <= 67) ||
+        (code >= 80 && code <= 82)
+    ) {
+        return "rain";
+    }
+
+    if (code >= 95 && code <= 99) {
+        return "thunderstorm";
+    }
+
+    if (code >= 35) {
+        return "wind";
+    }
+
+    return "";
+}
