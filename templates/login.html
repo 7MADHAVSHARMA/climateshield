@@ -53,25 +53,31 @@
 
                         <div class="mb-3">
                             <label class="form-label">Password</label>
-                             <div class="input-group">
-                             <input
-                              type="password"
-                              class="form-control"
-                              id="password"
-                              name="password"
-                              placeholder="Enter your password"
-                              required
-                              >
-                         <button
-            class="btn btn-outline-secondary"
-            type="button"
-            id="togglePassword"
-            aria-label="Show password"
-        >
-            <span id="togglePasswordIcon">👁️</span>
-        </button>
-    </div>
-</div>
+
+                            <div class="input-group">
+                                <input
+                                    type="password"
+                                    class="form-control"
+                                    id="password"
+                                    name="password"
+                                    placeholder="Enter your password"
+                                    required
+                                >
+
+                                <button
+                                    class="btn btn-outline-secondary"
+                                    type="button"
+                                    id="togglePassword"
+                                    aria-label="Show password"
+                                >
+                                    <span id="togglePasswordIcon">👁️</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            Login
+                        </button>
                     </form>
 
                     <p class="mt-3 mb-0 text-center">
@@ -83,6 +89,26 @@
         </div>
     </div>
 </main>
+
+<script>
+    const passwordInput = document.getElementById("password");
+    const togglePasswordButton = document.getElementById("togglePassword");
+    const togglePasswordIcon = document.getElementById("togglePasswordIcon");
+
+    togglePasswordButton.addEventListener("click", function () {
+        const isHidden = passwordInput.type === "password";
+
+        if (isHidden) {
+            passwordInput.type = "text";
+            togglePasswordIcon.textContent = "👁️";
+            togglePasswordButton.setAttribute("aria-label", "Hide password");
+        } else {
+            passwordInput.type = "password";
+            togglePasswordIcon.textContent = "👁️";
+            togglePasswordButton.setAttribute("aria-label", "Show password");
+        }
+    });
+</script>
 
 </body>
 </html>
