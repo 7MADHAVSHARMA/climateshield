@@ -258,7 +258,7 @@ def get_location_suggestions():
         "User-Agent": os.environ.get(
             "NOMINATIM_USER_AGENT",
             "ClimateShieldStudentProject/1.0 "
-            "(replace-with-your-email@example.com)"
+            "4madhavs1@gmail.com"
         )
     }
 
