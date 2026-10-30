@@ -69,13 +69,26 @@
                                 Password
                             </label>
 
-                            <input
-                                type="password"
-                                name="password"
-                                class="form-control"
-                                minlength="6"
-                                required
-                            >
+                            <div class="input-group">
+                                <input
+                                    type="password"
+                                    name="password"
+                                    id="password"
+                                    class="form-control"
+                                    minlength="6"
+                                    placeholder="Enter password"
+                                    required
+                                >
+
+                                <button
+                                    class="btn btn-outline-secondary"
+                                    type="button"
+                                    id="togglePassword"
+                                    aria-label="Show password"
+                                >
+                                    <span id="togglePasswordIcon">👁️</span>
+                                </button>
+                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -83,13 +96,26 @@
                                 Confirm Password
                             </label>
 
-                            <input
-                                type="password"
-                                name="confirm_password"
-                                class="form-control"
-                                minlength="6"
-                                required
-                            >
+                            <div class="input-group">
+                                <input
+                                    type="password"
+                                    name="confirm_password"
+                                    id="confirmPassword"
+                                    class="form-control"
+                                    minlength="6"
+                                    placeholder="Confirm password"
+                                    required
+                                >
+
+                                <button
+                                    class="btn btn-outline-secondary"
+                                    type="button"
+                                    id="toggleConfirmPassword"
+                                    aria-label="Show confirm password"
+                                >
+                                    <span id="toggleConfirmPasswordIcon">👁️</span>
+                                </button>
+                            </div>
                         </div>
 
                         <button class="btn btn-success w-100">
@@ -106,6 +132,42 @@
         </div>
     </div>
 </main>
+
+<script>
+    function setupPasswordToggle(inputId, buttonId, iconId) {
+        const passwordInput = document.getElementById(inputId);
+        const toggleButton = document.getElementById(buttonId);
+        const toggleIcon = document.getElementById(iconId);
+
+        if (!passwordInput || !toggleButton || !toggleIcon) {
+            return;
+        }
+
+        toggleButton.addEventListener("click", function () {
+            if (passwordInput.type === "password") {
+                passwordInput.type = "text";
+                toggleIcon.textContent = "👁️";
+                toggleButton.setAttribute("aria-label", "Hide password");
+            } else {
+                passwordInput.type = "password";
+                toggleIcon.textContent = "👁️";
+                toggleButton.setAttribute("aria-label", "Show password");
+            }
+        });
+    }
+
+    setupPasswordToggle(
+        "password",
+        "togglePassword",
+        "togglePasswordIcon"
+    );
+
+    setupPasswordToggle(
+        "confirmPassword",
+        "toggleConfirmPassword",
+        "toggleConfirmPasswordIcon"
+    );
+</script>
 
 </body>
 </html>
