@@ -179,3 +179,13 @@ body {
         height: 280px;
     }
 }
+#suggestions {
+    max-height: 260px;
+    overflow-y: auto;
+    border-radius: 8px;
+}
+
+#suggestions .list-group-item {
+    font-size: 14px;
+    white-space: normal;
+}
