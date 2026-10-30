@@ -128,6 +128,7 @@ body {
     max-height: 280px;
     overflow-y: auto;
     border-radius: 12px;
+    border-color: black;
     border: 1px solid var(--border-color);
     z-index: 1050;
 }
@@ -144,7 +145,7 @@ body {
 
 .loading-area {
     text-align: center;
-    padding: 24px 0 6px;
+    padding: 14px 0 6px;
 }
 
 .loading-text {
@@ -272,7 +273,21 @@ body {
         transform: translateY(0);
     }
 }
+.weather-icon.rain {
+    animation:
+        floatIcon 3s ease-in-out infinite,
+        rainFall 1.4s linear infinite;
+}
 
+.weather-icon.thunderstorm {
+    animation:
+        floatIcon 3s ease-in-out infinite,
+        thunderFlash 2.2s linear infinite;
+}
+
+.weather-icon.wind {
+    animation: windMove 2.4s ease-in-out infinite;
+}
 @keyframes floatIcon {
     0% {
         transform: translateY(0);
@@ -336,22 +351,6 @@ body {
         transform: translateX(-12px);
         opacity: 0.4;
     }
-}
-
-.weather-icon.rain {
-    animation:
-        floatIcon 3s ease-in-out infinite,
-        rainFall 1.4s linear infinite;
-}
-
-.weather-icon.thunderstorm {
-    animation:
-        floatIcon 3s ease-in-out infinite,
-        thunderFlash 2.2s linear infinite;
-}
-
-.weather-icon.wind {
-    animation: windMove 2.4s ease-in-out infinite;
 }
 
 @media (max-width: 768px) {
