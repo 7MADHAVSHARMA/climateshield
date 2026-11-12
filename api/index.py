@@ -1,3 +1,4 @@
+from ml_risk import climate_risk_model
 import os
 import json
 
