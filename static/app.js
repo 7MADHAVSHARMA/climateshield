@@ -264,108 +264,82 @@ async function loadRisk(latitude, longitude, name) {
     }
 }
 
-function renderResult(data, name, latitude, longitude) {
-    const resultSection = document.getElementById("result");
+const risks = data.risks;
 
-    if (resultSection) {
-        resultSection.classList.remove("d-none");
-        resultSection.classList.remove("result-section");
-        void resultSection.offsetWidth;
-        resultSection.classList.add("result-section");
+const riskCards = [
+    {
+        title: "Flood Risk",
+        value: risks.flood.score,
+        level: risks.flood.level
+    },
+    {
+        title: "Thunderstorm Risk",
+        value: risks.thunderstorm.score,
+        level: risks.thunderstorm.level
+    },
+    {
+        title: "Sandstorm Risk",
+        value: risks.sandstorm.score,
+        level: risks.sandstorm.level
+    },
+    {
+        title: "Air Pollution Risk",
+        value: risks.air_pollution.score,
+        level: risks.air_pollution.level
+    },
+    {
+        title: "Overall Climate Risk",
+        value: risks.overall.score,
+        level: risks.overall.level
     }
+];
 
-    const locationElement = document.getElementById("location");
+const riskContainer = document.getElementById("riskCards");
 
-    if (locationElement) {
-        locationElement.textContent = name;
-    }
+if (riskContainer) {
+    riskContainer.innerHTML = "";
 
-    const timeElement = document.getElementById("time");
+    riskCards.forEach(function (risk) {
+        const color = getBootstrapColor(risk.level);
 
-    if (timeElement) {
-        timeElement.textContent =
-            `Updated: ${data.current.time || "Now"} · ${data.timezone}`;
-    }
+        const card = document.createElement("div");
+        card.className = "col-md-6";
 
-    const levelElement = document.getElementById("level");
+        card.innerHTML = `
+            <div class="card border-${color} h-100">
+                <div class="card-body">
+                    <h6 class="card-title fw-bold">
+                        ${risk.title}
+                    </h6>
 
-    if (levelElement) {
-        levelElement.textContent = data.level.toUpperCase();
-        levelElement.className =
-            `risk-badge ${data.level.toUpperCase()}`;
-    }
+                    <h2 class="mb-1 text-${color}">
+                        ${risk.value}%
+                    </h2>
 
-    const weatherIcon = document.getElementById("weatherIcon");
-
-    if (weatherIcon) {
-        weatherIcon.className = `weather-icon ${getWeatherAnimationClass(data.current.weather_code)}`;
-        weatherIcon.textContent = getWeatherEmoji(data.current.weather_code);
-    }
-
-    const metricsElement = document.getElementById("metrics");
-
-    if (metricsElement) {
-        const current = data.current;
-
-        metricsElement.innerHTML = `
-            <p>
-                <strong>Temperature:</strong>
-                ${current.temperature_2m ?? "—"} °C
-            </p>
-
-            <p>
-                <strong>Rainfall:</strong>
-                ${current.rain ?? "—"} mm
-            </p>
-
-            <p>
-                <strong>Wind Speed:</strong>
-                ${current.wind_speed_10m ?? "—"} km/h
-            </p>
-
-            <p>
-                <strong>Humidity:</strong>
-                ${current.relative_humidity_2m ?? "—"}%
-            </p>
+                    <span class="badge bg-${color}">
+                        ${risk.level}
+                    </span>
+                </div>
+            </div>
         `;
-    }
 
-    const guidanceElement = document.getElementById("guidance");
-
-    if (guidanceElement) {
-        guidanceElement.innerHTML = data.guidance
-            .map(function (item) {
-                return `<li class="list-group-item">${item}</li>`;
-            })
-            .join("");
-    }
-
-    const risksElement = document.getElementById("risks");
-
-    if (risksElement) {
-        if (data.risks.length === 0) {
-            risksElement.innerHTML =
-                "<p>No project-defined climate risk threshold was reached.</p>";
-        } else {
-            risksElement.innerHTML = data.risks
-                .map(function (risk) {
-                    return `
-                        <div class="risk-item ${risk.level}">
-                            <strong>
-                                ${risk.type} — ${risk.level}
-                            </strong>
-                            <br>
-                            ${risk.detail}
-                        </div>
-                    `;
-                })
-                .join("");
-        }
-    }
-
-    updateMap(latitude, longitude, name);
+        riskContainer.appendChild(card);
+    });
 }
+const airQuality = document.getElementById("airQuality");
 
+if (airQuality) {
+    const pm25 = data.current.pm2_5;
+    const pm10 = data.current.pm10;
+    const aqi = data.current.european_aqi;
+
+    airQuality.innerHTML = `
+        <strong>Air Quality</strong><br>
+        PM2.5: ${pm25} µg/m³<br>
+        PM10: ${pm10} µg/m³<br>
+        European AQI: ${aqi}
+    `;
+}
 function updateMap(latitude, longitude, name) {
     const mapElement = document.getElementById("map");
 
