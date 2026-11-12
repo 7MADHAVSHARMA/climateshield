@@ -1,4 +1,3 @@
-from ml_risk import climate_risk_model
 import os
 import json
 
@@ -13,6 +12,8 @@ from flask import (
 )
 
 import requests
+
+from api.ml_risk import climate_risk_model
 
 from api.db import (
     init_db,
@@ -29,6 +30,7 @@ from api.db import (
 
 from api.email_service import send_climate_alert_email
 
+
 app = Flask(
     __name__,
     template_folder="../templates",
@@ -41,14 +43,17 @@ app.secret_key = os.environ.get(
 )
 
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
+AIR_QUALITY_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 
 RISK_PRIORITY = {
-    "Low": 1,
-    "Moderate": 2,
-    "High": 3,
-    "Severe": 4
+    "Minimal": 1,
+    "Low": 2,
+    "Moderate": 3,
+    "High": 4,
+    "Severe": 5
 }
+
 
 try:
     init_db()
@@ -211,7 +216,7 @@ def find_location():
         "User-Agent": os.environ.get(
             "NOMINATIM_USER_AGENT",
             "ClimateShieldStudentProject/1.0 "
-            "(replace-with-your-email@example.com)"
+            "(4madhavs1@gmail.com)"
         )
     }
 
@@ -246,14 +251,14 @@ def find_location():
         "latitude": float(location["lat"]),
         "longitude": float(location["lon"])
     })
+
+
 @app.route("/api/suggestions")
 def get_location_suggestions():
     query = request.args.get("q", "").strip()
 
     if len(query) < 3:
-        return jsonify({
-            "suggestions": []
-        })
+        return jsonify({"suggestions": []})
 
     headers = {
         "User-Agent": os.environ.get(
@@ -283,9 +288,7 @@ def get_location_suggestions():
 
     except requests.RequestException as error:
         print("Nominatim suggestions error:", error)
-        return jsonify({
-            "suggestions": []
-        })
+        return jsonify({"suggestions": []})
 
     suggestions = []
 
@@ -296,9 +299,8 @@ def get_location_suggestions():
             "longitude": float(location.get("lon", 0))
         })
 
-    return jsonify({
-        "suggestions": suggestions
-    })
+    return jsonify({"suggestions": suggestions})
+
 
 @app.route("/api/risk")
 def get_risk():
@@ -310,52 +312,158 @@ def get_risk():
             "error": "Valid latitude and longitude are required."
         }), 400
 
-    params = {
-        "latitude": latitude,
-        "longitude": longitude,
-        "current": (
-            "temperature_2m,relative_humidity_2m,"
-            "rain,wind_speed_10m,weather_code"
-        ),
-        "hourly": (
-            "temperature_2m,precipitation_probability,"
-            "rain,wind_speed_10m"
-        ),
-        "forecast_days": 3,
-        "timezone": "auto"
-    }
-
     try:
-        response = requests.get(
-            OPEN_METEO_URL,
-            params=params,
-            timeout=10
+        weather_data = get_weather_data(latitude, longitude)
+
+        if not weather_data:
+            return jsonify({
+                "error": "Weather service is unavailable."
+            }), 502
+
+        air_quality_data = get_air_quality_data(latitude, longitude)
+
+        current_weather = weather_data.get("current", {})
+        daily_weather = weather_data.get("daily", {})
+        current_air = air_quality_data.get("current", {})
+
+        precipitation = float(current_weather.get("rain", 0) or 0)
+        wind_speed = float(current_weather.get("wind_speed_10m", 0) or 0)
+        humidity = float(current_weather.get("relative_humidity_2m", 0) or 0)
+        temperature = float(current_weather.get("temperature_2m", 0) or 0)
+        weather_code = int(current_weather.get("weather_code", 0) or 0)
+
+        daily_precipitation = daily_weather.get("precipitation_sum", [0, 0, 0])
+        daily_gusts = daily_weather.get("wind_gusts_10m_max", [0, 0, 0])
+
+        max_daily_precipitation = max(
+            float(value or 0) for value in daily_precipitation
         )
 
-        response.raise_for_status()
-        weather_data = response.json()
+        max_daily_gust = max(
+            float(value or 0) for value in daily_gusts
+        )
 
-    except requests.RequestException as error:
-        print("Open-Meteo error:", error)
-        return jsonify({"error": "Weather service is unavailable."}), 502
+        pm25 = float(current_air.get("pm2_5", 0) or 0)
+        pm10 = float(current_air.get("pm10", 0) or 0)
+        no2 = float(current_air.get("nitrogen_dioxide", 0) or 0)
+        so2 = float(current_air.get("sulphur_dioxide", 0) or 0)
+        ozone = float(current_air.get("ozone", 0) or 0)
+        carbon_monoxide = float(current_air.get("carbon_monoxide", 0) or 0)
+        european_aqi = float(current_air.get("european_aqi", 0) or 0)
 
-    risk_result = classify_risk(weather_data)
+        assumed_soil_moisture = min(1.0, precipitation / 50)
+        assumed_drainage = 0.55
+        assumed_elevation = 0.45
+        assumed_river_proximity = 0.45
+        assumed_urbanization = 0.60
+        assumed_vegetation = 0.50
 
-    risk_result.update({
-        "location": {
+        flood_risk = climate_risk_model.calculate_flood_risk(
+            precipitation=max_daily_precipitation,
+            soil_moisture=assumed_soil_moisture,
+            drainage=assumed_drainage,
+            elevation=assumed_elevation,
+            river_proximity=assumed_river_proximity,
+            urbanization=assumed_urbanization
+        )
+
+        thunderstorm_risk = climate_risk_model.calculate_thunderstorm_risk(
+            cape=max(0, (temperature - 20) * 120),
+            wind_gust=max_daily_gust,
+            precipitation=max_daily_precipitation,
+            humidity=humidity,
+            temperature=temperature,
+            pressure=1013
+        )
+
+        dust_risk = climate_risk_model.calculate_dust_risk(
+            wind_speed=wind_speed,
+            wind_gust=max_daily_gust,
+            precipitation=precipitation,
+            humidity=humidity,
+            temperature=temperature,
+            vegetation=assumed_vegetation
+        )
+
+        pollution_risk = climate_risk_model.calculate_pollution_risk(
+            pm25=pm25,
+            pm10=pm10,
+            no2=no2,
+            so2=so2,
+            o3=ozone,
+            co=carbon_monoxide,
+            aqi=european_aqi
+        )
+
+        if weather_code in [95, 96, 99]:
+            thunderstorm_risk = max(thunderstorm_risk, 0.80)
+
+        if weather_code in [
+            51, 53, 55, 56, 57,
+            61, 63, 65, 66, 67,
+            80, 81, 82
+        ]:
+            flood_risk = max(flood_risk, 0.55)
+
+        overall_risk = climate_risk_model.calculate_overall_risk({
+            "flood": flood_risk,
+            "thunderstorm": thunderstorm_risk,
+            "dust": dust_risk,
+            "pollution": pollution_risk
+        })
+
+        risks = {
+            "flood": {
+                "score": round(flood_risk * 100, 1),
+                "level": climate_risk_model.get_risk_level(flood_risk)
+            },
+            "thunderstorm": {
+                "score": round(thunderstorm_risk * 100, 1),
+                "level": climate_risk_model.get_risk_level(thunderstorm_risk)
+            },
+            "sandstorm": {
+                "score": round(dust_risk * 100, 1),
+                "level": climate_risk_model.get_risk_level(dust_risk)
+            },
+            "air_pollution": {
+                "score": round(pollution_risk * 100, 1),
+                "level": climate_risk_model.get_risk_level(pollution_risk),
+                "pm2_5": pm25,
+                "pm10": pm10,
+                "european_aqi": european_aqi
+            },
+            "overall": {
+                "score": round(overall_risk * 100, 1),
+                "level": climate_risk_model.get_risk_level(overall_risk)
+            }
+        }
+
+        return jsonify({
             "latitude": latitude,
-            "longitude": longitude
-        },
-        "current": weather_data.get("current", {}),
-        "hourly": weather_data.get("hourly", {}),
-        "timezone": weather_data.get("timezone", "")
-    })
+            "longitude": longitude,
+            "current": {
+                "temperature_2m": temperature,
+                "relative_humidity_2m": humidity,
+                "precipitation": precipitation,
+                "weather_code": weather_code,
+                "wind_speed_10m": wind_speed,
+                "pm2_5": pm25,
+                "pm10": pm10,
+                "nitrogen_dioxide": no2,
+                "sulphur_dioxide": so2,
+                "ozone": ozone,
+                "carbon_monoxide": carbon_monoxide,
+                "european_aqi": european_aqi
+            },
+            "risks": risks,
+            "guidance": generate_guidance(risks)
+        })
 
-    risk_result["guidance"] = generate_guidance(
-        risk_result["risks"]
-    )
-
-    return jsonify(risk_result)
+    except Exception as error:
+        print("Risk calculation error:", error)
+        return jsonify({
+            "error": "Unable to calculate climate risk."
+        }), 500
 
 
 @app.route("/api/check-alerts")
@@ -373,15 +481,25 @@ def check_alerts():
         if not weather_data:
             continue
 
-        risk_result = classify_risk(weather_data)
+        current = weather_data.get("current", {})
+        rainfall = current.get("rain", 0) or 0
+        wind_speed = current.get("wind_speed_10m", 0) or 0
 
-        if risk_result["level"] not in ["High", "Severe"]:
-            continue
+        risks = []
 
-        for risk in risk_result["risks"]:
-            if risk["level"] not in ["High", "Severe"]:
-                continue
+        if rainfall >= 20:
+            risks.append({
+                "type": "Heavy Rainfall",
+                "level": "High"
+            })
 
+        if wind_speed >= 60:
+            risks.append({
+                "type": "Strong Wind",
+                "level": "High"
+            })
+
+        for risk in risks:
             already_sent = was_alert_sent_recently(
                 location["user_id"],
                 location["location_id"],
@@ -398,7 +516,7 @@ def check_alerts():
                 location["location_name"],
                 risk["type"],
                 risk["level"],
-                weather_data.get("current", {})
+                current
             )
 
             if success:
@@ -407,7 +525,7 @@ def check_alerts():
                     location["location_id"],
                     risk["type"],
                     risk["level"],
-                    json.dumps(weather_data.get("current", {}))
+                    json.dumps(current)
                 )
 
                 sent_count += 1
@@ -426,6 +544,11 @@ def get_weather_data(latitude, longitude):
             "temperature_2m,relative_humidity_2m,"
             "rain,wind_speed_10m,weather_code"
         ),
+        "daily": (
+            "precipitation_sum,temperature_2m_max,"
+            "temperature_2m_min,wind_gusts_10m_max"
+        ),
+        "forecast_days": 3,
         "timezone": "auto"
     }
 
@@ -444,114 +567,68 @@ def get_weather_data(latitude, longitude):
         return None
 
 
-def classify_risk(weather_data):
-    current = weather_data.get("current", {})
+def get_air_quality_data(latitude, longitude):
+    params = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "current": (
+            "pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,"
+            "sulphur_dioxide,ozone,european_aqi"
+        ),
+        "timezone": "auto"
+    }
 
-    temperature = current.get("temperature_2m")
-    rainfall = current.get("rain", 0) or 0
-    wind_speed = current.get("wind_speed_10m", 0) or 0
-
-    risks = []
-
-    if temperature is not None:
-        if temperature >= 45:
-            risks.append({
-                "type": "Extreme Heat",
-                "level": "Severe",
-                "detail": f"Temperature is {temperature}°C."
-            })
-
-        elif temperature >= 40:
-            risks.append({
-                "type": "Extreme Heat",
-                "level": "High",
-                "detail": f"Temperature is {temperature}°C."
-            })
-
-        elif temperature >= 35:
-            risks.append({
-                "type": "Heat Risk",
-                "level": "Moderate",
-                "detail": f"Temperature is {temperature}°C."
-            })
-
-    if rainfall >= 20:
-        risks.append({
-            "type": "Heavy Rainfall",
-            "level": "High",
-            "detail": (
-                f"Rainfall is {rainfall} mm. "
-                "Low-lying areas may face increased flood "
-                "or waterlogging risk."
-            )
-        })
-
-    elif rainfall >= 5:
-        risks.append({
-            "type": "Rainfall",
-            "level": "Moderate",
-            "detail": f"Rainfall is {rainfall} mm."
-        })
-
-    if wind_speed >= 60:
-        risks.append({
-            "type": "Strong Wind",
-            "level": "High",
-            "detail": f"Wind speed is {wind_speed} km/h."
-        })
-
-    elif wind_speed >= 35:
-        risks.append({
-            "type": "Wind Risk",
-            "level": "Moderate",
-            "detail": f"Wind speed is {wind_speed} km/h."
-        })
-
-    if not risks:
-        overall_level = "Low"
-
-    else:
-        overall_level = max(
-            [risk["level"] for risk in risks],
-            key=lambda level: RISK_PRIORITY[level]
+    try:
+        response = requests.get(
+            AIR_QUALITY_URL,
+            params=params,
+            timeout=10
         )
 
-    return {
-        "level": overall_level,
-        "risks": risks
-    }
+        response.raise_for_status()
+        return response.json()
+
+    except requests.RequestException as error:
+        print("Air quality error:", error)
+        return {}
 
 
 def generate_guidance(risks):
     instructions = []
 
-    for risk in risks:
-        risk_type = risk["type"].lower()
+    if risks["flood"]["score"] >= 60:
+        instructions.append(
+            "Avoid low-lying areas, drains, and flooded roads. "
+            "Move to higher ground if flooding begins."
+        )
 
-        if "heat" in risk_type:
-            instructions.append(
-                "Drink water, avoid unnecessary outdoor activity, "
-                "and stay in a cool place."
-            )
+    if risks["thunderstorm"]["score"] >= 60:
+        instructions.append(
+            "Stay indoors during thunderstorms. Avoid open fields, "
+            "tall trees, and metal objects."
+        )
 
-        elif "rain" in risk_type or "flood" in risk_type:
-            instructions.append(
-                "Avoid low-lying and flood-prone areas. "
-                "Do not cross flowing water on foot or by vehicle. "
-                "Follow official local advisories."
-            )
+    if risks["sandstorm"]["score"] >= 60:
+        instructions.append(
+            "Cover your nose and mouth, wear protective eyewear, "
+            "and avoid outdoor travel during dust storms."
+        )
 
-        elif "wind" in risk_type:
-            instructions.append(
-                "Stay indoors where possible. "
-                "Keep away from windows, trees, "
-                "and unstable structures."
-            )
+    if risks["air_pollution"]["score"] >= 60:
+        instructions.append(
+            "Limit outdoor activity, especially for children, older adults, "
+            "and people with breathing problems."
+        )
+
+    if risks["overall"]["score"] >= 80:
+        instructions.append(
+            "Severe conditions detected. Follow official local emergency advisories."
+        )
 
     if not instructions:
         instructions.append(
-            "No immediate project-defined hazard was detected. "
-            "Continue following official local advisories."
+            "No major climate risks detected at this time. "
+            "Continue normal activities with general weather awareness."
         )
 
     return list(dict.fromkeys(instructions))
