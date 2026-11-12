@@ -13,8 +13,6 @@ from flask import (
 
 import requests
 
-from api.ml_risk import climate_risk_model
-
 from api.db import (
     init_db,
     create_user,
@@ -326,20 +324,20 @@ def get_risk():
         daily_weather = weather_data.get("daily", {})
         current_air = air_quality_data.get("current", {})
 
-        precipitation = float(current_weather.get("rain", 0) or 0)
+        rainfall = float(current_weather.get("rain", 0) or 0)
         wind_speed = float(current_weather.get("wind_speed_10m", 0) or 0)
         humidity = float(current_weather.get("relative_humidity_2m", 0) or 0)
         temperature = float(current_weather.get("temperature_2m", 0) or 0)
         weather_code = int(current_weather.get("weather_code", 0) or 0)
 
-        daily_precipitation = daily_weather.get("precipitation_sum", [0, 0, 0])
+        daily_rain = daily_weather.get("precipitation_sum", [0, 0, 0])
         daily_gusts = daily_weather.get("wind_gusts_10m_max", [0, 0, 0])
 
-        max_daily_precipitation = max(
-            float(value or 0) for value in daily_precipitation
+        max_rain = max(
+            float(value or 0) for value in daily_rain
         )
 
-        max_daily_gust = max(
+        max_gust = max(
             float(value or 0) for value in daily_gusts
         )
 
@@ -351,90 +349,67 @@ def get_risk():
         carbon_monoxide = float(current_air.get("carbon_monoxide", 0) or 0)
         european_aqi = float(current_air.get("european_aqi", 0) or 0)
 
-        assumed_soil_moisture = min(1.0, precipitation / 50)
-        assumed_drainage = 0.55
-        assumed_elevation = 0.45
-        assumed_river_proximity = 0.45
-        assumed_urbanization = 0.60
-        assumed_vegetation = 0.50
-
-        flood_risk = climate_risk_model.calculate_flood_risk(
-            precipitation=max_daily_precipitation,
-            soil_moisture=assumed_soil_moisture,
-            drainage=assumed_drainage,
-            elevation=assumed_elevation,
-            river_proximity=assumed_river_proximity,
-            urbanization=assumed_urbanization
+        flood_risk = calculate_flood_risk(
+            max_rain,
+            rainfall,
+            humidity
         )
 
-        thunderstorm_risk = climate_risk_model.calculate_thunderstorm_risk(
-            cape=max(0, (temperature - 20) * 120),
-            wind_gust=max_daily_gust,
-            precipitation=max_daily_precipitation,
-            humidity=humidity,
-            temperature=temperature,
-            pressure=1013
+        thunderstorm_risk = calculate_thunderstorm_risk(
+            max_gust,
+            max_rain,
+            humidity,
+            weather_code
         )
 
-        dust_risk = climate_risk_model.calculate_dust_risk(
-            wind_speed=wind_speed,
-            wind_gust=max_daily_gust,
-            precipitation=precipitation,
-            humidity=humidity,
-            temperature=temperature,
-            vegetation=assumed_vegetation
+        dust_risk = calculate_dust_risk(
+            wind_speed,
+            max_gust,
+            rainfall,
+            humidity,
+            temperature
         )
 
-        pollution_risk = climate_risk_model.calculate_pollution_risk(
-            pm25=pm25,
-            pm10=pm10,
-            no2=no2,
-            so2=so2,
-            o3=ozone,
-            co=carbon_monoxide,
-            aqi=european_aqi
+        pollution_risk = calculate_pollution_risk(
+            pm25,
+            pm10,
+            no2,
+            so2,
+            ozone,
+            carbon_monoxide,
+            european_aqi
         )
 
-        if weather_code in [95, 96, 99]:
-            thunderstorm_risk = max(thunderstorm_risk, 0.80)
-
-        if weather_code in [
-            51, 53, 55, 56, 57,
-            61, 63, 65, 66, 67,
-            80, 81, 82
-        ]:
-            flood_risk = max(flood_risk, 0.55)
-
-        overall_risk = climate_risk_model.calculate_overall_risk({
-            "flood": flood_risk,
-            "thunderstorm": thunderstorm_risk,
-            "dust": dust_risk,
-            "pollution": pollution_risk
-        })
+        overall_risk = calculate_overall_risk(
+            flood_risk,
+            thunderstorm_risk,
+            dust_risk,
+            pollution_risk
+        )
 
         risks = {
             "flood": {
                 "score": round(flood_risk * 100, 1),
-                "level": climate_risk_model.get_risk_level(flood_risk)
+                "level": get_risk_level(flood_risk)
             },
             "thunderstorm": {
                 "score": round(thunderstorm_risk * 100, 1),
-                "level": climate_risk_model.get_risk_level(thunderstorm_risk)
+                "level": get_risk_level(thunderstorm_risk)
             },
             "sandstorm": {
                 "score": round(dust_risk * 100, 1),
-                "level": climate_risk_model.get_risk_level(dust_risk)
+                "level": get_risk_level(dust_risk)
             },
             "air_pollution": {
                 "score": round(pollution_risk * 100, 1),
-                "level": climate_risk_model.get_risk_level(pollution_risk),
+                "level": get_risk_level(pollution_risk),
                 "pm2_5": pm25,
                 "pm10": pm10,
                 "european_aqi": european_aqi
             },
             "overall": {
                 "score": round(overall_risk * 100, 1),
-                "level": climate_risk_model.get_risk_level(overall_risk)
+                "level": get_risk_level(overall_risk)
             }
         }
 
@@ -444,7 +419,7 @@ def get_risk():
             "current": {
                 "temperature_2m": temperature,
                 "relative_humidity_2m": humidity,
-                "precipitation": precipitation,
+                "precipitation": rainfall,
                 "weather_code": weather_code,
                 "wind_speed_10m": wind_speed,
                 "pm2_5": pm25,
@@ -482,8 +457,9 @@ def check_alerts():
             continue
 
         current = weather_data.get("current", {})
-        rainfall = current.get("rain", 0) or 0
-        wind_speed = current.get("wind_speed_10m", 0) or 0
+
+        rainfall = float(current.get("rain", 0) or 0)
+        wind_speed = float(current.get("wind_speed_10m", 0) or 0)
 
         risks = []
 
@@ -545,8 +521,7 @@ def get_weather_data(latitude, longitude):
             "rain,wind_speed_10m,weather_code"
         ),
         "daily": (
-            "precipitation_sum,temperature_2m_max,"
-            "temperature_2m_min,wind_gusts_10m_max"
+            "precipitation_sum,wind_gusts_10m_max"
         ),
         "forecast_days": 3,
         "timezone": "auto"
@@ -593,45 +568,146 @@ def get_air_quality_data(latitude, longitude):
         return {}
 
 
+def calculate_flood_risk(
+    max_daily_rain,
+    current_rain,
+    humidity
+):
+    flood_risk = (
+        (max_daily_rain / 100) * 0.60 +
+        (current_rain / 50) * 0.25 +
+        (humidity / 100) * 0.15
+    )
+
+    return min(1.0, max(0.0, flood_risk))
+
+
+def calculate_thunderstorm_risk(
+    max_gust,
+    max_rain,
+    humidity,
+    weather_code
+):
+    thunderstorm_risk = (
+        (max_gust / 100) * 0.40 +
+        (max_rain / 100) * 0.35 +
+        (humidity / 100) * 0.25
+    )
+
+    if weather_code in [95, 96, 99]:
+        thunderstorm_risk = max(thunderstorm_risk, 0.80)
+
+    return min(1.0, max(0.0, thunderstorm_risk))
+
+
+def calculate_dust_risk(
+    wind_speed,
+    max_gust,
+    rainfall,
+    humidity,
+    temperature
+):
+    dust_risk = (
+        (wind_speed / 80) * 0.35 +
+        (max_gust / 100) * 0.30 +
+        (1 - min(1.0, rainfall / 10)) * 0.15 +
+        (1 - humidity / 100) * 0.10 +
+        (max(0, temperature - 30) / 25) * 0.10
+    )
+
+    return min(1.0, max(0.0, dust_risk))
+
+
+def calculate_pollution_risk(
+    pm25,
+    pm10,
+    no2,
+    so2,
+    ozone,
+    carbon_monoxide,
+    european_aqi
+):
+    pollution_risk = (
+        (pm25 / 150) * 0.35 +
+        (pm10 / 250) * 0.20 +
+        (no2 / 200) * 0.10 +
+        (so2 / 200) * 0.10 +
+        (ozone / 240) * 0.10 +
+        (carbon_monoxide / 10000) * 0.05 +
+        (european_aqi / 200) * 0.10
+    )
+
+    return min(1.0, max(0.0, pollution_risk))
+
+
+def calculate_overall_risk(
+    flood_risk,
+    thunderstorm_risk,
+    dust_risk,
+    pollution_risk
+):
+    overall_risk = (
+        flood_risk * 0.30 +
+        thunderstorm_risk * 0.25 +
+        dust_risk * 0.20 +
+        pollution_risk * 0.25
+    )
+
+    return min(1.0, max(0.0, overall_risk))
+
+
+def get_risk_level(score):
+    if score >= 0.80:
+        return "Severe"
+    elif score >= 0.60:
+        return "High"
+    elif score >= 0.40:
+        return "Moderate"
+    elif score >= 0.20:
+        return "Low"
+    else:
+        return "Minimal"
+
+
 def generate_guidance(risks):
-    instructions = []
+    guidance = []
 
     if risks["flood"]["score"] >= 60:
-        instructions.append(
+        guidance.append(
             "Avoid low-lying areas, drains, and flooded roads. "
             "Move to higher ground if flooding begins."
         )
 
     if risks["thunderstorm"]["score"] >= 60:
-        instructions.append(
+        guidance.append(
             "Stay indoors during thunderstorms. Avoid open fields, "
             "tall trees, and metal objects."
         )
 
     if risks["sandstorm"]["score"] >= 60:
-        instructions.append(
+        guidance.append(
             "Cover your nose and mouth, wear protective eyewear, "
             "and avoid outdoor travel during dust storms."
         )
 
     if risks["air_pollution"]["score"] >= 60:
-        instructions.append(
+        guidance.append(
             "Limit outdoor activity, especially for children, older adults, "
             "and people with breathing problems."
         )
 
     if risks["overall"]["score"] >= 80:
-        instructions.append(
+        guidance.append(
             "Severe conditions detected. Follow official local emergency advisories."
         )
 
-    if not instructions:
-        instructions.append(
+    if not guidance:
+        guidance.append(
             "No major climate risks detected at this time. "
             "Continue normal activities with general weather awareness."
         )
 
-    return list(dict.fromkeys(instructions))
+    return list(dict.fromkeys(guidance))
 
 
 @app.errorhandler(Exception)
